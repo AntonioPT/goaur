@@ -1,0 +1,3 @@
+initial variable: devel mode: regular (~/Builds/$package updating) or one-timer (build in /tmp/aur and then rm -rf it)
+
+In install/upgrade functions check the devel mode and change it's working according to it.
