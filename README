@@ -1,0 +1,12 @@
+This is a script for ArchLinux that can install or upgrade AUR packages.
+It is used like this:
+	goaur install [aurpackage]
+	goaur upgrade
+
+For devel packages (git, hg, etc...) if there's a dir with the same name
+as the devel package in ~/Builds it will update that directory so you
+don't have to checkout all the sources all the time.
+
+(c) António PT (aka acmps) - acmps.pt@gmail.com
+
+It is released under the GPL 2 or greater.

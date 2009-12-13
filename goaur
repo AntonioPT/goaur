@@ -1,0 +1,103 @@
+#!/bin/sh
+
+NOT=".*-(git|svn|cvs|darcs|hg|bzr|split)$|^chromium|worldofgoo"
+DEF_EDITOR="nano"
+DEVEL_DIR="Builds" #inside home
+mkdir /tmp/aur
+
+if [ ! -d ~/$DEVEL_DIR ]; then
+	mkdir ~/$DEVEL_DIR
+fi
+
+upgradeaur () {
+	for i in $(pacman -Qm | awk '{print $1}'); do
+	TOUPGRADE=$(echo $i | egrep -v $NOT) 
+	if [ "$TOUPGRADE" == "$i" ]; then 
+		AURV=$(curl -s "http://aur.archlinux.org/rpc.php?type=info&arg=`echo $i`" | sed 's/{/\n/g' | sed 's/,/\n/g' | grep '^"Version"' | sed 's/"//g' | sed 's/:/ /g' | awk '{print $2}')
+		LOCALV=$(pacman -Q | grep "^$i " | awk '{print $2}') 
+		CHECK=$(vercmp $LOCALV $AURV) 
+		if [ "$CHECK" -lt 0 ]; then 
+			echo -n "$i: AUR's version ($AURV) is greater then the local one ($LOCALV). Continue? "
+			read YN 
+			if [ $YN = "y" ]; then 
+				cd /tmp/aur 
+				wget http://aur.archlinux.org/packages/$i/$i.tar.gz 
+				tar xvzf $i.tar.gz
+				cd $i
+				$DEF_EDITOR PKGBUILD 
+				makepkg -s
+				sudo pacman -U $i*pkg*
+			else 
+				continue 
+			fi 
+		elif [ "$AURV" == "$LOCALV" ]; then 
+				echo -n "$i: AUR's version is equal to the local one ($LOCALV)."
+		else
+				echo -n "$i: The local version ($LOCALV) is greater then AUR's ($AURV)."
+		fi
+	else
+		if [ -d ~/$DEVEL_DIR/$i ]; then
+			echo "$i: This is a development version. Continue? " 
+			read YN
+			if [ "$YN" == "y" ]; then
+				cd ~/$DEVEL_DIR/$i
+				mkdir tmp; cd tmp
+				wget http://aur.archlinux.org/packages/$i/$i.tar.gz 
+				tar xvzf $i.tar.gz
+				cd $i
+				for o in $(ls); do
+					mv -f $o ../..
+				done
+				cd ../..
+				rm -rf tmp
+				$DEF_EDITOR PKGBUILD
+				makepkg -s
+				sudo pacman -U $i*pkg*
+			else
+				continue
+			fi
+		else
+			echo "$i: This is a development version. Continue? " 
+			read YN
+			if [ "$YN" == "y" ]; then
+				cd ~/$DEVEL_DIR
+				wget http://aur.archlinux.org/packages/$i/$i.tar.gz
+				tar xvzf $i.tar.gz
+				cd $i
+				$DEF_EDITOR PKGBUILD
+				makepkg -s
+				sudo pacman -U $i*pkg*
+			else
+				continue
+			fi
+		fi
+	fi
+	done
+}
+
+installaur () {
+	cd /tmp/aur
+	wget http://aur.archlinux.org/packages/$TOINSTALL/$TOINSTALL.tar.gz 
+	tar xvzf $TOINSTALL.tar.gz
+	cd $TOINSTALL
+	$DEF_EDITOR PKGBUILD
+	makepkg -s
+	sudo pacman -U $TOINSTALL*pkg*
+}
+
+case "$1" in
+	install)
+		TOINSTALL="$2"
+		installaur
+		;;
+	upgrade)
+		upgradeaur
+		;;
+	*)
+		echo "testing install [AUR package]"
+		echo "testing upgrade"
+		exit 1
+esac
+
+
+rm -rf /tmp/aur
